@@ -1,0 +1,7 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://opcfoundation.org/webservices/XMLDA/1.0/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <ns:Browse LocaleID="" ClientRequestHandle="XYZ" ItemPath="" ItemName="bioreactor.parameters" ContinuationPoint="" MaxElementsReturned="1000" BrowseFilter="all" ElementNameFilter="" VendorFilter="" ReturnAllProperties="true" ReturnPropertyValues="false" ReturnErrorText="false">
+      </ns:Browse>
+   </soapenv:Body>
+</soapenv:Envelope>
