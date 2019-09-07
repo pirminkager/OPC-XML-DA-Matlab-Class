@@ -1,0 +1,23 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://opcfoundation.org/webservices/XMLDA/1.0/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <ns:Write xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+                xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                ReturnValuesOnReply="true">
+         <!--Optional:-->
+         <ns:Options ReturnErrorText="true" ReturnDiagnosticInfo="false" ReturnItemTime="false" ReturnItemPath="false" ReturnItemName="false" RequestDeadline="" ClientRequestHandle="" LocaleID=""/>
+         <!--Optional:-->
+         <ns:ItemList ItemPath="">
+            <!--Zero or more repetitions:-->
+            <ns:Items ValueTypeQualifier="" ItemPath="" ItemName="bioreactor.parameters.Temp.Setpoint" ClientItemHandle="" Timestamp="" ResultID="">
+               <!--Optional:-->
+               <ns:DiagnosticInfo></ns:DiagnosticInfo>
+               <!--Optional:-->
+               <ns:Value>36.8</ns:Value>
+               <!--Optional:-->
+               <ns:Quality QualityField="good" LimitField="none" VendorField="0"/>
+            </ns:Items>
+         </ns:ItemList>
+      </ns:Write>
+   </soapenv:Body>
+</soapenv:Envelope>
