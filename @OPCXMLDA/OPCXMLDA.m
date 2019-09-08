@@ -9,7 +9,8 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
     properties (SetAccess = private) % Read Only
         operation
         operationID
-        opclist
+        opctags
+        opctypes
         urls = struct('Reactor_10','http://128.131.133.36:8080','Reactor_20','http://128.131.133.37:8080','Reactor_2','http://128.131.133.45:8080')
         soapaction % is dynamically assigned by initialization
     end
@@ -55,7 +56,7 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
                 itemName = [""];
             elseif (nargin == 2)
                 itemName = ItemNameArg;
-                %fields = textscan(ItemNameArg,'%s','Delimiter','.');
+                fields = textscan(ItemNameArg,'%s','Delimiter','.');
             else
                 error('Too many or too few arguments')
             end
@@ -67,6 +68,13 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
             response = webwrite(obj.url,soapaction,options);
             value = response.getElementsByTagName('Value').item(0).getTextContent;
             type = response.getElementsByTagName('Value').item(0).getAttribute('xsi:type');
+            % test if value type is already known, else save it to struct
+            % opctypes
+            try
+                getfield(obj.opctypes,fields{1}{:})
+            catch
+                obj.opctypes=makestructentry(obj,obj.opctypes,itemName,type)
+            end
         end
         
         function r = write(obj,itemName,value)
@@ -79,9 +87,6 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
         end
 
         function r = browse(obj,ItemNameArg)
-            %BROWSE Summary of this function goes here
-            %   Detailed explanation goes here
-            
             if (nargin == 1)
                 itemName = [""];
             elseif (nargin == 2)
@@ -103,24 +108,36 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
                     name = char(elements.item(i-1).getAttributes.getNamedItem("Name").getValue)
                     value = string(elements.item(i-1).getAttributes.getNamedItem("ItemName").getValue);
                     if itemName == ""
-                        obj.opclist.(name) = value;
+                        obj.opctags.(name) = value;
                     else
-                        %fields{1}{end+1,:} = name;
                         fieldnames = fields;
                         fieldnames{end+1,:} = matlab.lang.makeValidName(name)
-                        obj.opclist = setfield(obj.opclist,fieldnames{:},value);
+                        obj.opctags = setfield(obj.opctags,fieldnames{:},value);
                     end
                 elseif (elements.item(i-1).getAttributes.getNamedItem("HasChildren").getValue) == 'true'
                     value = string(elements.item(i-1).getAttributes.getNamedItem("ItemName").getValue);
                     obj.browse(value)
                 end
             end
-            r = obj.opclist;
+            r = obj.opctags;
         end
         
-        %opcStructure = browse(obj,ItemName) %this is the definition to read the function from a seperate file in the class folder (@folder)
-        
         % Followed by subroutines used by all requests
+        %r = makestructentry(obj,struct,ItemNameArg,name,value)
+        function r = makestructentry(obj,struct,ItemNameArg,name,value)
+            fields = textscan(ItemNameArg,'%s','Delimiter','.');
+            fields = matlab.lang.makeValidName(fields{1});
+            fieldname = fields;
+            if (nargin == 4)
+                value = name;
+            elseif (nargin == 5)
+                fieldname{end+1,:} = matlab.lang.makeValidName(name);
+            else
+                error('Wrong number of arguments')
+            end
+            struct = setfield(struct,fieldname{:},value);
+            r = struct;
+        end
         function r = getWeboptions(obj,operation) %Create options for web
             if (obj.operationisValid(operation))
                 options = weboptions()
@@ -132,21 +149,7 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
                 error('operation is not valid')
             end
         end
-        
-%         function r = getsoapXml(obj,operation) %NOT USED!
-%             if (nargin == 1)
-%                 %r = obj.soapaction(find(contains(obj.operations,obj.operation)));
-%                 error('no operation defined')
-%             end
-%             if (nargin == 2)
-%                 if operationisValid(operation)
-%                     r = obj.soapaction(find(contains(obj.operations,operation)));
-%                 end
-%             else
-%                 error('Invalid Action')
-%             end
-%         end
-        
+
         function r = request(obj,soapmessage,operation)
             options = getWeboptions(operation)
             r = webwrite(obj.url,soapmessage,options)
@@ -158,8 +161,6 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
             else
                 par = arg
             end
-            %tagName = strcat('ns:',operation)
-            tagName = operation
             dom = obj.soapaction.(obj.operation.(operation))
             
             if (isempty(par))
@@ -168,18 +169,14 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
                 error('wrong dimensions ["item1","val1","item2,"val2",...]')
             else
                 r = obj.soapactionchangeParameters(dom,operation,par)
-%                 if isa(par,'string')
-%                     for i = 1:2:length(par)
-%                         dom.getElementsByTagName(tagName).item(0).setAttribute(par(i),par(i+1))
-%                     end
-%                     r = dom
-%                 else
-%                     error('par has to be a string array ["item1","val1","item2,"val2",...]')
-%                 end
             end
         end
         
         function r = soapactionreadParameters(obj,dom,par)
+            % This function is not yet used. but "soapenv:Body" will make
+            % problems with generic opcxml devices
+            % Maybe make a funtion which returns the xml so the programmer
+            % can search for the tagname in question in the xml?
             tagName = dom.getElementsByTagName("soapenv:Body").item(0).getChildNodes.item(1).getTagName
             %tagName = strcat('ns:',operation)
             if isempty(par)
