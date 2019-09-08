@@ -1,3 +1,0 @@
-Handle class is the way to go!
-
-Next step define the configuration part
