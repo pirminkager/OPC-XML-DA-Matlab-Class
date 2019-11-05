@@ -8,7 +8,7 @@ Browse
 
 At this point i dont know if i will include more Actions to the Class.
 
-Also i did not test it with other OPCXML devices though i think adaption is straightforward.
+Also i did not test it with other OPCXML devices though i think adaption is possible.
 
 The interface is designed as a Matlab Class. To use it copy the folder containing the class in your matlab path.
 
