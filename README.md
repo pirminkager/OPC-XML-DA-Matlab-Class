@@ -23,4 +23,5 @@ Example Usage
 ```
 
 Tested on Matlab 2018.
-Not yet Working on Matlab 2019a because of a bug in the webwrite function.
+Tested on Matlab 2019a.
+
