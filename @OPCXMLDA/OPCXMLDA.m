@@ -15,8 +15,7 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
         soapaction % is dynamically assigned by initialization
     end
     
-    properties (Access = private)
-        options = weboptions()   
+    properties (Access = private)   
         operations = ["Browse" "Read" "Write"]
         soapxml = struct('Browse','browse.xml','Read','read.xml','Write','write.xml')
         types = ["xsd:float"        "single";...
@@ -57,9 +56,7 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
             operation = obj.operation.Read;
             soapaction = obj.getsoapAction(operation);%,["ItemName",itemName]);
             soapaction = obj.soapactionchangeParameters(soapaction,"Items",["ItemName",itemName]);
-            
-            options = obj.getWeboptions(operation);
-            response = webwrite(obj.url,soapaction,options);
+            response = obj.request(soapaction,operation);
             value = response.getElementsByTagName('Value').item(0).getTextContent;
             type = response.getElementsByTagName('Value').item(0).getAttribute('xsi:type');
             % test if value type is already known, else save it to struct
@@ -95,8 +92,7 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
                 soapaction = obj.soapactionchangeParameters(soapaction,"Items",["ItemName",itemName]);
                 %soapaction = obj.soapactionchangeParameters(soapaction,"Value",["xsi:type",opctype]);
                 soapaction = obj.soapactionchangeValue(soapaction,xmlvalue,opctype);
-                options = obj.getWeboptions(operation);
-                response = webwrite(obj.url,soapaction,options);
+                response = obj.request(soapaction,operation);
             else
                 error('wrong type')
             end
@@ -122,8 +118,7 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
             operation = obj.operation.Browse;
             soapaction = obj.getsoapAction(operation);%,["ItemName",itemName]);
             soapaction = obj.soapactionchangeParameters(soapaction,"Browse",["ItemName",itemName]);
-            options = obj.getWeboptions(operation);
-            response = webwrite(obj.url,soapaction,options);
+            response = obj.request(soapaction,operation);
             %elements = response.getElementsByTagName('n2:BrowseResponse').item(0).getElementsByTagName("Elements");
             elements = response.getElementsByTagName("Elements");
             for i = 1:elements.getLength
@@ -203,21 +198,33 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
             struct = setfield(struct,fieldname{:},value);
             r = struct;
         end
-        function r = getWeboptions(obj,operation) %Create options for web
+
+        function r = request(obj,soapmessage,operation)
+            %% New Method using HTTP
+            data = soapmessage;
+            body = matlab.net.http.MessageBody(data);
+            uri = matlab.net.URI(obj.url);
+            acceptencodingField = matlab.net.http.field.GenericField('Accept-Encoding','gzip,deflate');
+            contentTypeField = matlab.net.http.field.ContentTypeField('text/xml;charset=UTF-8');
             if (obj.operationisValid(operation))
-                options = weboptions();
-                options.ContentType = 'xml';
-                headers = {'SOAPAction' strcat('http://opcfoundation.org/webservices/XMLDA/1.0/',char(operation))};
-                options.HeaderFields = headers;
-                r = options;
+                SOAPActionField = matlab.net.http.field.GenericField('SOAPAction',strcat('http://opcfoundation.org/webservices/XMLDA/1.0/',char(operation)));
             else
                 error('operation is not valid')
             end
-        end
-
-        function r = request(obj,soapmessage,operation)
-            options = getWeboptions(operation);
-            r = webwrite(obj.url,soapmessage,options);
+            %contentlengthField = matlab.net.http.field.ContentLengthField('');
+            hostField = matlab.net.http.field.HostField('128.131.133.36:8080');
+            connectionField = matlab.net.http.field.ConnectionField('close');
+            useragentField = matlab.net.http.field.GenericField('User-Agent','Apache-HttpClient/4.1.1 (java 1.5)');
+            %header = [acceptencodingField contentTypeField SOAPActionField contentlengthField hostField connectionField useragentField];
+            header = [acceptencodingField contentTypeField SOAPActionField hostField connectionField useragentField];
+            method = matlab.net.http.RequestMethod.POST;
+            request = matlab.net.http.RequestMessage(method,header,body);
+            response = request.send(uri);
+            r = response.Body.Data;
+            %% Debugging
+             show(request)
+            % response.Header.string
+            % response.Body.show
         end
             
         function r = getsoapAction(obj,operation,arg)
