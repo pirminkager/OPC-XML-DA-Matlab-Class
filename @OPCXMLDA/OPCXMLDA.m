@@ -222,7 +222,7 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
             response = request.send(uri);
             r = response.Body.Data;
             %% Debugging
-             show(request)
+            % show(request)
             % response.Header.string
             % response.Body.show
         end
