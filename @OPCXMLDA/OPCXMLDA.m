@@ -138,7 +138,40 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
             r = "OK";%xmlwrite(response);
         end
 
-        
+        function r = writeBulk(obj,opctags,values)
+            %% Check if num elements in opctags and values are equal
+            if numel(opctags) ~= numel(values)
+                error('opctags and values must have the same number of elements.')
+            end
+
+            if ~isstring(opctags)
+                error('opctags must be a string array.')
+            end
+
+            %% Iterate through values and assign opctype 
+            values_opctypes = strings(size(values));
+            xmlvalues = strings(size(values));
+            for i=1:numel(values)
+                [istype,opctype] = obj.checktype(values(i),opctags(i));
+                if ~istype
+                     error('wrong type')
+                end
+                values_opctypes(i) = opctype;
+                xmlvalues(i) = obj.converttype(values(i),opctype);
+            end
+           
+            
+            operation = obj.operation.Write;
+            soapaction = obj.getsoapAction(operation);
+            soapaction = soapactionInjectItemlist(obj, soapaction, opctags);
+            soapaction = soapactionchangeValues(soapaction,xmlvalues,values_opctypes);
+            
+            response = obj.request(soapaction,operation);
+            
+
+            r = "OK";%xmlwrite(response);
+        end
+
 
         function r = browse(obj,ItemNameArg)
             % if no browse is performed and the opctags struct is empty
