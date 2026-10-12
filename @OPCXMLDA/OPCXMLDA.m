@@ -66,6 +66,45 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
                 obj.opctypes=makestructentry(obj,obj.opctypes,itemName,type);
             end
         end
+
+        function [value, type] = readBulk(obj,opctags)
+            %r = itemName
+            
+            if isempty(opctags)
+                error('opctags must not be empty.')
+            end
+            
+            
+            operation = obj.operation.Read;
+            soapaction = obj.getsoapAction(operation);
+            soapaction = soapactionInjectItemlist(obj, soapaction, opctags);
+            response = obj.request(soapaction,operation);
+            
+            valueNodes = response.getElementsByTagName('Value');
+
+            values = strings(length(opctags),1);
+            value_types  = strings(length(opctags),1);
+
+            for i = 1:length(opctags)
+                values(i) = string(valueNodes.item(i-1).getTextContent);
+                value_types(i) = string(valueNodes.item(i-1).getAttribute('xsi:type'));
+
+                % Cache
+                fields = obj.getstructfieldsarray(opctags(i));
+                % test if value type is already known, else save it to struct
+                % opctypes
+                try
+                    getfield(obj.opctypes,fields{:});
+                catch
+                    obj.opctypes = obj.makestructentry( ...
+                        obj.opctypes, ...
+                        opctags(i), ...
+                        value_types(i) ...
+                        );
+                end
+            end
+
+        end
         
         function r = write(obj,itemNameArg,value)
             % In order to make the write function we need to know what
@@ -98,6 +137,8 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
             
             r = "OK";%xmlwrite(response);
         end
+
+        
 
         function r = browse(obj,ItemNameArg)
             % if no browse is performed and the opctags struct is empty
@@ -276,6 +317,33 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
                     error('par has to be a string array ["item1","val1","item2,"val2",...]')
                 end
             end
+        end
+
+        function r=soapactionInjectItemlist(obj, dom, par)
+            %% Modify XML dom by adding items to ItemList tag in XML. 
+            % The items are given by par and correspond to OPC tags
+            % ItemName for the added Items is set per tag in par
+            % Each tag gets a ClientItemHandle given by its index in par
+            % list. 
+            %% TODO: This could be changed since client handles of 2 
+            %% separate requests can be equal
+
+            itemList = dom.getElementsByTagName("ItemList").item(0);
+            template = dom.getElementsByTagName("Items").item(0);
+            for i = 1:length(par)
+                if i == 1
+                    item=template;
+                    
+                else
+                    item=template.cloneNode(true);
+                    itemList.appendChild(item);
+                end
+                
+                item.setAttribute("ItemName", par(i));
+                item.setAttribute("ClientItemHandle", string(i));
+            end
+            r=dom;
+            
         end
         
         function r = soapactionchangeValue(obj,dom,value,opctype)
