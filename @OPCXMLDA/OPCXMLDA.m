@@ -345,6 +345,24 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
             r=dom;
             
         end
+
+        function r = soapactionchangeValuesList(dom,values,opctypes)
+            %% Create an item list with soapactionInjectItemlist first and then inject values using this function
+            if numel(values)~=numel(opctypes)
+                error('wrong dimensions values must have same dim as opctypes')
+            end
+
+            values_dom = dom.getElementsByTagName('Value');
+            if numel(values)~=values_dom.getLength
+                error('Not enough Items in dom')
+            end
+
+            for i=1:numel(values)
+                values_dom.item(i-1).setAttribute("xsi:type",opctypes(i));
+                values_dom.item(i-1).setTextContent(string(values(i)));
+            end
+            r = dom;
+        end
         
         function r = soapactionchangeValue(obj,dom,value,opctype)
             dom.getElementsByTagName('Value').item(0).setAttribute("xsi:type",opctype)
