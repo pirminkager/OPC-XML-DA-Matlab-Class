@@ -67,7 +67,7 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
             end
         end
 
-        function [value, type] = readBulk(obj,opctags)
+        function [values, value_types] = readBulk(obj,opctags)
             %r = itemName
             
             if isempty(opctags)
@@ -80,17 +80,32 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
             soapaction = soapactionInjectItemlist(obj, soapaction, opctags);
             response = obj.request(soapaction,operation);
             
-            valueNodes = response.getElementsByTagName('Value');
+            %valueNodes = response.getElementsByTagName('Value');
+            itemNodes = response.getElementsByTagName('Items');
 
             values = strings(length(opctags),1);
             value_types  = strings(length(opctags),1);
+            if itemNodes.getLength ~= length(opctags)
+                warning("Response size doesn't macth request")
+            end
+            for i = 1:itemNodes.getLength
+                
+                idx = str2double(string(itemNodes.item(i-1).getAttribute("ClientItemHandle")));
+                if isnan(idx) || idx < 1 || idx > numel(opctags)
+                    error('Invalid ClientItemHandle returned by server.')
+                end
 
-            for i = 1:length(opctags)
-                values(i) = string(valueNodes.item(i-1).getTextContent);
-                value_types(i) = string(valueNodes.item(i-1).getAttribute('xsi:type'));
+                item = itemNodes.item(i-1).getElementsByTagName('Value').item(0);
+                if isempty(item)
+                    warning("No value returned for OPC tag: %s",opctags(idx))
+                    continue
+                end
+
+                values(idx) = string(item.getTextContent);
+                value_types(idx) = string(item.getAttribute('xsi:type'));
 
                 % Cache
-                fields = obj.getstructfieldsarray(opctags(i));
+                fields = obj.getstructfieldsarray(opctags(idx));
                 % test if value type is already known, else save it to struct
                 % opctypes
                 try
@@ -98,8 +113,8 @@ classdef OPCXMLDA < handle & matlab.System %& matlab.mixin.SetGet%
                 catch
                     obj.opctypes = obj.makestructentry( ...
                         obj.opctypes, ...
-                        opctags(i), ...
-                        value_types(i) ...
+                        opctags(idx), ...
+                        value_types(idx) ...
                         );
                 end
             end
